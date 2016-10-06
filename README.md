@@ -1,4 +1,5 @@
-# somsphere (Self Organizing Maps in spherical coordinates)
+# somsphere 
+## (Self Organizing Maps in spherical coordinates)
 
 Just the piece (SOMZ) of code taken from [MLZ](https://github.com/mgckind/MLZ) to create Self Organizing Maps in different topologies (spherical, rectangular and hexagonal coordinates).
 
@@ -8,7 +9,7 @@ Paper Reference where this is introduced and used [here](http://arxiv.org/abs/13
 
 ## Installation
 
-  pip install git+https://github.com/mgckind/iso_forest.git
+  pip install git+https://github.com/mgckind/somsphere.git
  
 It supports python2 and python3 
 
