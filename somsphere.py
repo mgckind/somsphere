@@ -4,6 +4,9 @@
 
 """
 from __future__ import print_function
+from builtins import zip
+from builtins import range
+from builtins import object
 __author__ = 'Matias Carrasco Kind'
 import numpy
 import copy
@@ -56,7 +59,7 @@ def get_ns(ix, iy, nx, ny, index=False):
         return ns
     if index:
         ins = []
-        for i in xrange(len(ns)):
+        for i in range(len(ns)):
             ins.append(get_index(ns[i, 0], ns[i, 1], nx, ny))
         return numpy.array(ins)
 
@@ -83,7 +86,7 @@ def get_ns_hex(ix, iy, nx, ny, index=False):
         return ns
     if index:
         ins = []
-        for i in xrange(len(ns)):
+        for i in range(len(ns)):
             ins.append(get_index(ns[i, 0], ns[i, 1], nx, ny))
         return numpy.array(ins)
 
@@ -111,9 +114,9 @@ def geometry(top, Ntop, periodic='no'):
         nside = Ntop
         npix = 12 * nside ** 2
         distLib = numpy.zeros((npix, npix))
-        for i in xrange(npix):
+        for i in range(npix):
             ai = hpx.pix2ang(nside, i)
-            for j in xrange(i + 1, npix):
+            for j in range(i + 1, npix):
                 aj = hpx.pix2ang(nside, j)
                 distLib[i, j] = hpx.rotator.angdist(ai, aj)
                 distLib[j, i] = distLib[i, j]
@@ -130,13 +133,13 @@ def geometry(top, Ntop, periodic='no'):
         dy = 1. / (ny - 1)
         distLib = numpy.zeros((npix, npix))
         if periodic == 'no':
-            for i in xrange(npix):
-                for j in xrange(i + 1, npix):
+            for i in range(npix):
+                for j in range(i + 1, npix):
                     distLib[i, j] = numpy.sqrt((bX[i] - bX[j]) ** 2 + (bY[i] - bY[j]) ** 2)
                     distLib[j, i] = distLib[i, j]
         if periodic == 'yes':
-            for i in xrange(npix):
-                for j in xrange(i + 1, npix):
+            for i in range(npix):
+                for j in range(i + 1, npix):
                     s0 = numpy.sqrt((bX[i] - bX[j]) ** 2 + (bY[i] - bY[j]) ** 2)
                     s1 = numpy.sqrt((bX[i] - (bX[j] + 1. + dx)) ** 2 + (bY[i] - bY[j]) ** 2)
                     s2 = numpy.sqrt((bX[i] - (bX[j] + 1. + dx)) ** 2 + (bY[i] - (bY[j] + 1. + dy)) ** 2)
@@ -161,8 +164,8 @@ def geometry(top, Ntop, periodic='no'):
         bY = numpy.zeros(nx * ny)
         kk = 0
         last = ny * dy
-        for jj in xrange(ny):
-            for ii in xrange(nx):
+        for jj in range(ny):
+            for ii in range(nx):
                 if jj % 2 == 0: off = 0.
                 if jj % 2 == 1: off = 0.5
                 bX[kk] = xL[ii] + off
@@ -170,13 +173,13 @@ def geometry(top, Ntop, periodic='no'):
                 kk += 1
         distLib = numpy.zeros((npix, npix))
         if periodic == 'no':
-            for i in xrange(npix):
-                for j in xrange(i + 1, npix):
+            for i in range(npix):
+                for j in range(i + 1, npix):
                     distLib[i, j] = numpy.sqrt((bX[i] - bX[j]) ** 2 + (bY[i] - bY[j]) ** 2)
                     distLib[j, i] = distLib[i, j]
         if periodic == 'yes':
-            for i in xrange(npix):
-                for j in xrange(i + 1, npix):
+            for i in range(npix):
+                for j in range(i + 1, npix):
                     s0 = numpy.sqrt((bX[i] - bX[j]) ** 2 + (bY[i] - bY[j]) ** 2)
                     s1 = numpy.sqrt((bX[i] - (bX[j] + nx)) ** 2 + (bY[i] - bY[j]) ** 2)
                     s2 = numpy.sqrt((bX[i] - (bX[j] + nx)) ** 2 + (bY[i] - (bY[j] + last)) ** 2)
@@ -222,7 +225,7 @@ def h(bmu, mapD, sigma):
     return numpy.exp(-(mapD[bmu] ** 2) / sigma ** 2)
 
 
-class SelfMap():
+class SelfMap(object):
     """
     Create a som class instance
 
@@ -312,15 +315,15 @@ class SelfMap():
             tt = 0
             sigma0 = self.distLib.max()
             sigma_single = numpy.min(self.distLib[numpy.where(self.distLib > 0.)])
-            for it in xrange(self.nIter):
+            for it in range(self.nIter):
                 #get alpha, sigma
                 alpha = get_alpha(tt, self.aps, self.ape, self.NT)
                 sigma = get_sigma(tt, sigma0, sigma_single, self.NT)
                 if random_order:
-                    index_random = random.sample(xrange(self.np), self.np)
+                    index_random = random.sample(range(self.np), self.np)
                 else:
                     index_random = numpy.arange(self.np)
-                for i in xrange(self.np):
+                for i in range(self.np):
                     tt += 1
                     inputs = self.X[index_random[i]]
                     best, activation = self.som_best_cell(inputs)
@@ -333,19 +336,19 @@ class SelfMap():
             tt = 0
             sigma0 = self.distLib.max()
             sigma_single = numpy.min(self.distLib[numpy.where(self.distLib > 0.)])
-            for it in xrange(self.nIter):
+            for it in range(self.nIter):
                 #get alpha, sigma
                 sigma = get_sigma(tt, sigma0, sigma_single, self.NT)
                 accum_w = numpy.zeros((self.nDim, self.npix))
                 accum_n = numpy.zeros(self.npix)
-                for i in xrange(self.np):
+                for i in range(self.np):
                     tt += 1
                     inputs = self.X[i]
                     best, activation = self.som_best_cell(inputs)
-                    for kk in xrange(self.nDim):
+                    for kk in range(self.nDim):
                         accum_w[kk, :] += h(best, self.distLib, sigma) * inputs[kk]
                     accum_n += h(best, self.distLib, sigma)
-                for kk in xrange(self.nDim):
+                for kk in range(self.nDim):
                     self.weights[kk] = accum_w[kk] / accum_n
 
                 if evol == 'yes':
@@ -372,7 +375,7 @@ class SelfMap():
             inY = self.Y
         else:
             inY = inputY
-        for i in xrange(len(inX)):
+        for i in range(len(inX)):
             inputs = inX[i]
             best, activation = self.som_best_cell(inputs)
             if best not in self.yvals: self.yvals[best] = []
@@ -390,7 +393,7 @@ class SelfMap():
         :return: array with the cell content
         """
         best, act = self.som_best_cell(line, return_vals=10)
-        for ib in xrange(10):
+        for ib in range(10):
             if best[ib] in self.yvals: return self.yvals[best[ib]]
         return numpy.array([-1.])
 
@@ -464,7 +467,7 @@ class SelfMap():
 
         if self.top == 'grid':
             M = numpy.zeros(self.npix) - 20.
-            for i in xrange(self.npix):
+            for i in range(self.npix):
                 if i in self.yvals:
                     M[i] = numpy.mean(self.yvals[i])
             M2 = numpy.reshape(M, (self.Ntop, self.Ntop))
@@ -487,8 +490,8 @@ class SelfMap():
             bX = numpy.zeros(nx * ny)
             bY = numpy.zeros(nx * ny)
             kk = 0
-            for jj in xrange(ny):
-                for ii in xrange(nx):
+            for jj in range(ny):
+                for ii in range(nx):
                     if jj % 2 == 0: off = 0.
                     if jj % 2 == 1: off = 0.5
                     bX[kk] = xL[ii] + off
@@ -498,14 +501,14 @@ class SelfMap():
             sizes_2 = numpy.zeros(nx * ny) + ((8. * 0.78 / (self.Ntop + 0.5)) / 2. * 72.) ** 2 * 4. * numpy.pi / 3.
             M = numpy.zeros(npix) - 20.
             fcolors = [plt.cm.Spectral_r(x) for x in numpy.random.rand(nx * ny)]
-            for i in xrange(npix):
+            for i in range(npix):
                 if i in self.yvals:
                     M[i] = numpy.mean(self.yvals[i])
             if max_m == -100: max_m = M.max()
             if min_m == -100: min_m = M[numpy.where(M > -10)].min()
             M = M - min_m
             M = M / (max_m - min_m)
-            for i in xrange(npix):
+            for i in range(npix):
                 if M[i] <= 0:
                     fcolors[i] = plt.cm.Greys(.5)
                 else:
@@ -529,7 +532,7 @@ class SelfMap():
                 cb1.set_label('')
         if self.top == 'sphere':
             M = numpy.zeros(self.npix) + H.UNSEEN
-            for i in xrange(self.npix):
+            for i in range(self.npix):
                 if i in self.yvals:
                     M[i] = numpy.mean(self.yvals[i])
             plt.figure(10, figsize=(8, 8), dpi=100)

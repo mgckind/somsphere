@@ -1,4 +1,5 @@
 """isoforest version"""
+from builtins import map
 
 version_tag = (1, 0, 0)
 __version__ = '.'.join(map(str, version_tag[:3]))
