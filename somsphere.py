@@ -3,6 +3,7 @@
 .. moduleauthor:: Matias Carrasco Kind
 
 """
+from __future__ import print_function
 __author__ = 'Matias Carrasco Kind'
 import numpy
 import copy
@@ -104,7 +105,7 @@ def geometry(top, Ntop, periodic='no'):
         try:
             import healpy as hpx
         except:
-            print 'Error: healpy module not found, use grid or hex topologies'
+            print('Error: healpy module not found, use grid or hex topologies')
             sys.exit(0)
     if top == 'sphere':
         nside = Ntop
@@ -251,7 +252,7 @@ class SelfMap():
         self.ape = aend
         self.top = topology
         if topology=='sphere' and not is_power_2(Ntop):
-            print 'Error, Ntop must be power of 2'
+            print('Error, Ntop must be power of 2')
             sys.exit(0)
         self.stype = som_type
         self.Ntop = Ntop
@@ -282,9 +283,9 @@ class SelfMap():
         It uses a Fortran subroutine compiled with f2py
         """
         if not self.SF90:
-            print
-            print 'Fortran module somF not found, use create_map instead or try' \
-                  ' f2py -c -m somF som.f90'
+            print()
+            print('Fortran module somF not found, use create_map instead or try' \
+                  ' f2py -c -m somF som.f90')
             sys.exit(0)
         if inputs_weights == '':
             self.weights = (numpy.random.rand(self.nDim, self.npix)) + self.X[0][0]
@@ -374,9 +375,9 @@ class SelfMap():
         for i in xrange(len(inX)):
             inputs = inX[i]
             best, activation = self.som_best_cell(inputs)
-            if not self.yvals.has_key(best): self.yvals[best] = []
+            if best not in self.yvals: self.yvals[best] = []
             self.yvals[best].append(inY[i])
-            if not self.ivals.has_key(best): self.ivals[best] = []
+            if best not in self.ivals: self.ivals[best] = []
             self.ivals[best].append(i)
 
     def get_vals(self, line):
@@ -390,7 +391,7 @@ class SelfMap():
         """
         best, act = self.som_best_cell(line, return_vals=10)
         for ib in xrange(10):
-            if self.yvals.has_key(best[ib]): return self.yvals[best[ib]]
+            if best[ib] in self.yvals: return self.yvals[best[ib]]
         return numpy.array([-1.])
 
     def get_best(self, line):
@@ -464,7 +465,7 @@ class SelfMap():
         if self.top == 'grid':
             M = numpy.zeros(self.npix) - 20.
             for i in xrange(self.npix):
-                if self.yvals.has_key(i):
+                if i in self.yvals:
                     M[i] = numpy.mean(self.yvals[i])
             M2 = numpy.reshape(M, (self.Ntop, self.Ntop))
             plt.figure(figsize=(8, 8), dpi=100)
@@ -498,7 +499,7 @@ class SelfMap():
             M = numpy.zeros(npix) - 20.
             fcolors = [plt.cm.Spectral_r(x) for x in numpy.random.rand(nx * ny)]
             for i in xrange(npix):
-                if self.yvals.has_key(i):
+                if i in self.yvals:
                     M[i] = numpy.mean(self.yvals[i])
             if max_m == -100: max_m = M.max()
             if min_m == -100: min_m = M[numpy.where(M > -10)].min()
@@ -529,7 +530,7 @@ class SelfMap():
         if self.top == 'sphere':
             M = numpy.zeros(self.npix) + H.UNSEEN
             for i in xrange(self.npix):
-                if self.yvals.has_key(i):
+                if i in self.yvals:
                     M[i] = numpy.mean(self.yvals[i])
             plt.figure(10, figsize=(8, 8), dpi=100)
             if min_m == -100: min_m = M[numpy.where(M > -10)].min()
