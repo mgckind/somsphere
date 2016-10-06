@@ -458,7 +458,7 @@ class SelfMap(object):
         """
 
         import matplotlib.pyplot as plt
-        from matplotlib import mpl
+        import matplotlib as mpl
         import matplotlib.cm as cm
         from matplotlib import collections, transforms
         from matplotlib.colors import colorConverter
