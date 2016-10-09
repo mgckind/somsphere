@@ -19,4 +19,4 @@ Beside standard libraries ([numpy](http://www.numpy.org/), [matplotlib](http://m
 
 ## Examples
 
-See [here](Example.ipynb)
+See [here](Example.ipynb) for a notebook example on how to get started.
