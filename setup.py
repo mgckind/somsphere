@@ -18,5 +18,5 @@ setup(
     description = 'somsphere : Self Organizing Maps in spherical coordinates and other topologies',
     long_description = open('README.md').read(),
     url='https://github.com/mgckind/somsphere',
-    install_requires=['numpy', 'matplotlib', 'healpy', 'scipy'],
+    install_requires=['numpy', 'matplotlib', 'scipy'],
 )
