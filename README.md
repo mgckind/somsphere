@@ -15,7 +15,7 @@ It supports python2 and python3
 
 ## Requirements
 
-Beside standard libraries ([numpy](http://www.numpy.org/), [matplotlib](http://matplotlib.org/), [scipy](https://www.scipy.org/))  to run in spherical coordinates it also needs [healpy](https://healpy.readthedocs.io/en/latest/), a library to deal with spherical coordinates and spherical tesellations.  
+Beside standard libraries ([numpy](http://www.numpy.org/), [matplotlib](http://matplotlib.org/), [scipy](https://www.scipy.org/))  to run in spherical coordinates it also needs [healpy](https://healpy.readthedocs.io/en/latest/), a library to deal with spherical coordinates and spherical tesellations. This last requirement is optional
 
 ## Examples
 
