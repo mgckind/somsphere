@@ -1,0 +1,4 @@
+matplotlib==3.2.2
+numpy==1.19.1
+scipy==1.5.2
+healpy==1.14.0
