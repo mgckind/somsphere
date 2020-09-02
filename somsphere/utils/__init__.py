@@ -1,5 +1,4 @@
-import sys
-
+import healpy as hp
 import numpy
 
 from somsphere import Topology
@@ -59,7 +58,17 @@ def get_neighbors(ix, iy, nx, ny, index=False, hex=False):
     return numpy.array(ins)
 
 
-def geometry(topology: Topology, n_top, periodic=False):
+def get_map_size(n_top, topology: Topology):
+    if topology == Topology.SPHERE:
+        return 12 * n_top ** 2
+    elif topology == Topology.GRID:
+        return n_top * n_top
+    elif topology == Topology.HEX:
+        x_l, y_l = numpy.arange(0, n_top, 1.), numpy.arange(0, n_top, DY)
+        return len(x_l) * len(y_l)
+
+
+def compute_distance(topology: Topology, n_top, periodic=False):
     """
     Pre-compute distances between cells in a given topology
     and store it on a dist_lib array
@@ -72,85 +81,74 @@ def geometry(topology: Topology, n_top, periodic=False):
     :return: 2D array with distances pre computed between cells and total number of units
     :rtype: 2D float array, int
     """
+    n_pix = get_map_size(n_top, topology=topology)
+    dist_lib = numpy.zeros((n_pix, n_pix))
+
     if topology == Topology.SPHERE:
-        try:
-            import healpy as hpx
-        except:
-            print('Error: healpy module not found, use grid or hex topologies')
-            sys.exit(0)
-        nside = n_top
-        n_pix = 12 * nside ** 2
-        dist_lib = numpy.zeros((n_pix, n_pix))
         for i in range(n_pix):
-            ai = hpx.pix2ang(nside, i)
+            ai = hp.pix2ang(n_top, i)
             for j in range(i + 1, n_pix):
-                aj = hpx.pix2ang(nside, j)
-                dist_lib[i, j] = hpx.rotator.angdist(ai, aj)
+                aj = hp.pix2ang(n_top, j)
+                dist_lib[i, j] = hp.rotator.angdist(ai, aj)
                 dist_lib[j, i] = dist_lib[i, j]
         dist_lib[numpy.where(numpy.isnan(dist_lib))] = numpy.pi
     elif topology == Topology.GRID:
-        nx = n_top
-        ny = n_top
-        n_pix = nx * ny
-        map_x_y = numpy.mgrid[0:1:complex(0, nx), 0:1:complex(0, ny)]
+        map_x_y = numpy.mgrid[0:1:complex(0, n_top), 0:1:complex(0, n_top)]
         map_x_y = numpy.reshape(map_x_y, (2, n_pix))
-        b_x = map_x_y[1]
-        b_y = map_x_y[0]
-        dx = 1. / (nx - 1)
-        dy = 1. / (ny - 1)
-        dist_lib = numpy.zeros((n_pix, n_pix))
+        b_x, b_y = map_x_y[1], map_x_y[0]
+        dx, dy = 1. / (n_top - 1), 1. / (n_top - 1)
         for i in range(n_pix):
             for j in range(i + 1, n_pix):
                 if not periodic:
-                    dist_lib[i, j] = numpy.sqrt((b_x[i] - b_x[j]) ** 2 + (b_y[i] - b_y[j]) ** 2)
+                    dist_lib[i, j] = calc_distance(b_x[i], b_x[j], b_y[i], b_y[j])
                     dist_lib[j, i] = dist_lib[i, j]
                 else:
-                    s0 = numpy.sqrt((b_x[i] - b_x[j]) ** 2 + (b_y[i] - b_y[j]) ** 2)
-                    s1 = numpy.sqrt((b_x[i] - (b_x[j] + 1. + dx)) ** 2 + (b_y[i] - b_y[j]) ** 2)
-                    s2 = numpy.sqrt((b_x[i] - (b_x[j] + 1. + dx)) ** 2 + (b_y[i] - (b_y[j] + 1. + dy)) ** 2)
-                    s3 = numpy.sqrt((b_x[i] - (b_x[j] + 0.)) ** 2 + (b_y[i] - (b_y[j] + 1. + dy)) ** 2)
-                    s4 = numpy.sqrt((b_x[i] - (b_x[j] - 1. - dx)) ** 2 + (b_y[i] - (b_y[j] + 1. + dy)) ** 2)
-                    s5 = numpy.sqrt((b_x[i] - (b_x[j] - 1. - dx)) ** 2 + (b_y[i] - (b_y[j] + 0.)) ** 2)
-                    s6 = numpy.sqrt((b_x[i] - (b_x[j] - 1. - dx)) ** 2 + (b_y[i] - (b_y[j] - 1. - dy)) ** 2)
-                    s7 = numpy.sqrt((b_x[i] - (b_x[j] + 0.)) ** 2 + (b_y[i] - (b_y[j] - 1. - dy)) ** 2)
-                    s8 = numpy.sqrt((b_x[i] - (b_x[j] + 1. + dx)) ** 2 + (b_y[i] - (b_y[j] - 1. - dy)) ** 2)
+                    s0 = calc_distance(b_x[i], b_x[j], b_y[i], b_y[j])
+                    s1 = calc_distance(b_x[i], b_x[j] + 1. + dx, b_y[i], b_y[j])
+                    s2 = calc_distance(b_x[i], b_x[j] - 1. - dx, b_y[i], b_y[j] + 0.)
+                    s3 = calc_distance(b_x[i], b_x[j] + 0., b_y[i], b_y[j] + 1. + dy)
+                    s4 = calc_distance(b_x[i], b_x[j] + 0., b_y[i], b_y[j] - 1. - dy)
+                    s5 = calc_distance(b_x[i], b_x[j] + 1. + dx, b_y[i], b_y[j] + 1. + dy)
+                    s6 = calc_distance(b_x[i], b_x[j] - 1. - dx, b_y[i], b_y[j] + 1. + dy)
+                    s7 = calc_distance(b_x[i], b_x[j] - 1. - dx, b_y[i], b_y[j] - 1. - dy)
+                    s8 = calc_distance(b_x[i], b_x[j] + 1. + dx, b_y[i], b_y[j] - 1. - dy)
                     dist_lib[i, j] = numpy.min((s0, s1, s2, s3, s4, s5, s6, s7, s8))
                     dist_lib[j, i] = dist_lib[i, j]
     elif topology == Topology.HEX:
-        kk, off = 0, 0.0
+        ptr = 0
         x_l, y_l = numpy.arange(0, n_top, 1.), numpy.arange(0, n_top, DY)
         nx, ny = len(x_l), len(y_l)
-        n_pix = nx * ny
         b_x, b_y = numpy.zeros(n_pix), numpy.zeros(n_pix)
+        for y_idx in range(ny):
+            for x_idx in range(nx):
+                b_x[ptr] = x_l[x_idx] + 0. if y_idx % 2 == 0 else 0.5
+                b_y[ptr] = y_l[y_idx]
+                ptr += 1
+
         last = ny * DY
-
-        for jj in range(ny):
-            for ii in range(nx):
-                off = 0. if jj % 2 == 0 else 0.5
-                b_x[kk] = x_l[ii] + off
-                b_y[kk] = y_l[jj]
-                kk += 1
-
-        dist_lib = numpy.zeros((n_pix, n_pix))
         for i in range(n_pix):
             for j in range(i + 1, n_pix):
                 if not periodic:
-                    dist_lib[i, j] = numpy.sqrt((b_x[i] - b_x[j]) ** 2 + (b_y[i] - b_y[j]) ** 2)
+                    dist_lib[i, j] = calc_distance(b_x[i], b_x[j], b_y[i], b_y[j])
                     dist_lib[j, i] = dist_lib[i, j]
                 else:
-                    s0 = numpy.sqrt((b_x[i] - b_x[j]) ** 2 + (b_y[i] - b_y[j]) ** 2)
-                    s1 = numpy.sqrt((b_x[i] - (b_x[j] + nx)) ** 2 + (b_y[i] - b_y[j]) ** 2)
-                    s2 = numpy.sqrt((b_x[i] - (b_x[j] + nx)) ** 2 + (b_y[i] - (b_y[j] + last)) ** 2)
-                    s3 = numpy.sqrt((b_x[i] - (b_x[j] + 0)) ** 2 + (b_y[i] - (b_y[j] + last)) ** 2)
-                    s4 = numpy.sqrt((b_x[i] - (b_x[j] - nx)) ** 2 + (b_y[i] - (b_y[j] + last)) ** 2)
-                    s5 = numpy.sqrt((b_x[i] - (b_x[j] - nx)) ** 2 + (b_y[i] - (b_y[j] + 0)) ** 2)
-                    s6 = numpy.sqrt((b_x[i] - (b_x[j] - nx)) ** 2 + (b_y[i] - (b_y[j] - last)) ** 2)
-                    s7 = numpy.sqrt((b_x[i] - (b_x[j] + 0)) ** 2 + (b_y[i] - (b_y[j] - last)) ** 2)
-                    s8 = numpy.sqrt((b_x[i] - (b_x[j] + nx)) ** 2 + (b_y[i] - (b_y[j] - last)) ** 2)
+                    s0 = calc_distance(b_x[i], b_x[j], b_y[i], b_y[j])
+                    s1 = calc_distance(b_x[i], b_x[j] + nx, b_y[i], b_y[j])
+                    s2 = calc_distance(b_x[i], b_x[j] - nx, b_y[i], b_y[j] + 0)
+                    s3 = calc_distance(b_x[i], b_x[j] + 0, b_y[i], b_y[j] + last)
+                    s4 = calc_distance(b_x[i], b_x[j] + 0, b_y[i], b_y[j] - last)
+                    s5 = calc_distance(b_x[i], b_x[j] + nx, b_y[i], b_y[j] + last)
+                    s6 = calc_distance(b_x[i], b_x[j] - nx, b_y[i], b_y[j] + last)
+                    s7 = calc_distance(b_x[i], b_x[j] - nx, b_y[i], b_y[j] - last)
+                    s8 = calc_distance(b_x[i], b_x[j] + nx, b_y[i], b_y[j] - last)
                     dist_lib[i, j] = numpy.min((s0, s1, s2, s3, s4, s5, s6, s7, s8))
                     dist_lib[j, i] = dist_lib[i, j]
 
     return dist_lib, n_pix
+
+
+def calc_distance(a, b, c, d):
+    return numpy.sqrt((a - b) ** 2 + (c - d) ** 2)
 
 
 def is_power_2(value):
@@ -160,18 +158,18 @@ def is_power_2(value):
     return value != 0 and ((value & (value - 1)) == 0)
 
 
-def get_alpha(t, alpha_start, alpha_end, NT):
+def get_alpha(alpha_end, alpha_start, curr_t, total_t):
     """
     Get value of alpha at a given time
     """
-    return alpha_start * numpy.power(alpha_end / alpha_start, float(t) / float(NT))
+    return alpha_start * numpy.power(alpha_end / alpha_start, float(curr_t) / float(total_t))
 
 
-def get_sigma(t, sigma_0, sigma_f, NT):
+def get_sigma(sigma_f, sigma_0, curr_t, total_t):
     """
-    Get value of sigma at a given timesure
+    Get value of sigma at a given time
     """
-    return sigma_0 * numpy.power(sigma_f / sigma_0, float(t) / float(NT))
+    return sigma_0 * numpy.power(sigma_f / sigma_0, float(curr_t) / float(total_t))
 
 
 def count_modified_cells(bmu, map_d, sigma):

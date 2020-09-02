@@ -1,18 +1,11 @@
-import sys
+from numpy.distutils.core import setup
 
-files_f90 = ['resources/som.f90', ]
-from numpy.distutils.core import setup, Extension
-
-extra_link_args = []
-libraries = []
-library_dirs = []
 exec(open('version.py').read())
 setup(
     name='somsphere',
     version=__version__,
     author='Matias Carrasco Kind',
     author_email='mcarras2@illinois.edu',
-    ext_modules=[Extension('somF', files_f90, ), ],
     packages=[],
     py_modules=['somsphere'],
     license='License.txt',
