@@ -16,6 +16,7 @@ import numpy
 from matplotlib import collections
 from matplotlib.colors import colorConverter
 
+import core
 from somsphere.models import Topology, DY, SomType
 from somsphere.utils import get_sigma, is_power_2, compute_distance, count_modified_cells, get_alpha
 
@@ -82,7 +83,7 @@ class SOMap(object):
                     self.n_row)
                 for i in range(self.n_row):
                     inputs = self.X[random_indices[i]]
-                    best, activation = self.__get_best_cell(inputs)
+                    best, activation = core.get_best_cell(inputs=inputs, importance=self.importance, weights=self.weights, n_pix=self.n_pix)
                     self.weights += alpha * count_modified_cells(best, self.dist_lib, sigma) * numpy.transpose(
                         (inputs - numpy.transpose(self.weights)))
 
@@ -92,7 +93,7 @@ class SOMap(object):
                 accum_n = numpy.zeros(self.n_pix)
                 for i in range(self.n_row):
                     inputs = self.X[i]
-                    best, activation = self.__get_best_cell(inputs)
+                    best, activation = core.get_best_cell(inputs=inputs, importance=self.importance, weights=self.weights, n_pix=self.n_pix)
                     for kk in range(self.n_col):
                         accum_w[kk, :] += count_modified_cells(best, self.dist_lib, sigma) * inputs[kk]
                     accum_n += count_modified_cells(best, self.dist_lib, sigma)
@@ -121,7 +122,7 @@ class SOMap(object):
         in_y = self.Y if input_y is None else input_y
         for i in range(len(in_x)):
             inputs = in_x[i]
-            best, activation = self.__get_best_cell(inputs)
+            best, activation = core.get_best_cell(inputs=inputs, importance=self.importance, weights=self.weights, n_pix=self.n_pix)
             if best not in self.y_vals:
                 self.y_vals[best] = []
             self.y_vals[best].append(in_y[i])
@@ -226,7 +227,7 @@ class SOMap(object):
         :param bool best: Set to True to get only the best cell; otherwise the 10 closest cells will be returned
         :return: array with the cell content
         """
-        bests, _ = self.__get_best_cell(line, return_vals=10)
+        bests, _ = core.get_best_cell(inputs=line, importance=self.importance, weights=self.weights, n_pix=self.n_pix, return_vals=10)
         if best:
             return bests[0]
         for ib in range(10):
@@ -258,12 +259,12 @@ class SOMap(object):
     def __update_weights(self, inputs_weights):
         self.weights = inputs_weights if inputs_weights is not None else self.weights
 
-    def __get_best_cell(self, inputs, return_vals=1):
-        """
-        Return the closest cell to the input object
-        It can return more than one value if needed
-        """
-        activations = numpy.sum(numpy.transpose([self.importance]) * (
-                numpy.transpose(numpy.tile(inputs, (self.n_pix, 1))) - self.weights) ** 2, axis=0)
-
-        return numpy.argmin(activations) if return_vals == 1 else numpy.argsort(activations)[0:return_vals], activations
+    # def __core.get_best_cell(self, inputs, return_vals=1):
+    #     """
+    #     Return the closest cell to the input object
+    #     It can return more than one value if needed
+    #     """
+    #     activations = numpy.sum(numpy.transpose([self.importance]) * (
+    #             numpy.transpose(numpy.tile(inputs, (self.n_pix, 1))) - self.weights) ** 2, axis=0)
+    #
+    #     return numpy.argmin(activations) if return_vals == 1 else numpy.argsort(activations)[0:return_vals], activations
