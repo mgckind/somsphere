@@ -1,8 +1,35 @@
+import time
+from functools import wraps
+from timeit import timeit
+
 import healpy as hp
 import numpy
 
-from somsphere import Topology
-from somsphere.models import DY
+from somsphere.models import DY, Topology
+
+
+def timeit(my_func):
+    @wraps(my_func)
+    def timed(*args, **kw):
+        tstart = time.time()
+        output = my_func(*args, **kw)
+        tend = time.time()
+
+        print('"{}" took {:.3f} ms to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
+        return output
+
+    return timed
+
+
+def get_best_cell(inputs, importance, n_pix, weights, return_vals=1):
+    """
+    Return the closest cell to the input object
+    It can return more than one value if needed
+    """
+    activations = numpy.sum(numpy.transpose([importance]) * (
+            numpy.transpose(numpy.tile(inputs, (n_pix, 1))) - weights) ** 2, axis=0)
+
+    return numpy.argmin(activations) if return_vals == 1 else numpy.argsort(activations)[0:return_vals], activations
 
 
 def get_index(ix, iy, nx, ny):
@@ -56,6 +83,41 @@ def get_neighbors(ix, iy, nx, ny, index=False, hex=False):
     for i in range(len(ns)):
         ins.append(get_index(ns[i, 0], ns[i, 1], nx, ny))
     return numpy.array(ins)
+
+
+def calc_distance(a, b, c, d):
+    return numpy.sqrt((a - b) ** 2 + (c - d) ** 2)
+
+
+def is_power_2(value):
+    """
+    Check if passed value is a power of 2
+    """
+    return value != 0 and ((value & (value - 1)) == 0)
+
+
+def get_alpha(alpha_end, alpha_start, curr_t, total_t):
+    """
+    Get value of alpha at a given time
+    """
+    return alpha_start * numpy.power(alpha_end / alpha_start, float(curr_t) / float(total_t))
+
+
+def get_sigma(sigma_f, sigma_0, curr_t, total_t):
+    """
+    Get value of sigma at a given time
+    """
+    return sigma_0 * numpy.power(sigma_f / sigma_0, float(curr_t) / float(total_t))
+
+
+def count_modified_cells(bmu, map_d, sigma):
+    """
+    Neighborhood function which quantifies how much cells around the best matching one are modified
+
+    :param int bmu: best matching unit
+    :param float map_d: array of distances computed with :func:`geometry`
+    """
+    return numpy.exp(-(map_d[bmu] ** 2) / sigma ** 2)
 
 
 def get_map_size(n_top, topology: Topology):
@@ -145,38 +207,3 @@ def compute_distance(topology: Topology, n_top, periodic=False):
                     dist_lib[j, i] = dist_lib[i, j]
 
     return dist_lib, n_pix
-
-
-def calc_distance(a, b, c, d):
-    return numpy.sqrt((a - b) ** 2 + (c - d) ** 2)
-
-
-def is_power_2(value):
-    """
-    Check if passed value is a power of 2
-    """
-    return value != 0 and ((value & (value - 1)) == 0)
-
-
-def get_alpha(alpha_end, alpha_start, curr_t, total_t):
-    """
-    Get value of alpha at a given time
-    """
-    return alpha_start * numpy.power(alpha_end / alpha_start, float(curr_t) / float(total_t))
-
-
-def get_sigma(sigma_f, sigma_0, curr_t, total_t):
-    """
-    Get value of sigma at a given time
-    """
-    return sigma_0 * numpy.power(sigma_f / sigma_0, float(curr_t) / float(total_t))
-
-
-def count_modified_cells(bmu, map_d, sigma):
-    """
-    Neighborhood function which quantifies how much cells around the best matching one are modified
-
-    :param int bmu: best matching unit
-    :param float map_d: array of distances computed with :func:`geometry`
-    """
-    return numpy.exp(-(map_d[bmu] ** 2) / sigma ** 2)
