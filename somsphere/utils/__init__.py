@@ -15,7 +15,7 @@ def timeit(my_func):
         output = my_func(*args, **kw)
         tend = time.time()
 
-        print('"{}" took {:.3f} ms to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
+        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
         return output
 
     return timed
@@ -30,6 +30,16 @@ def get_best_cell(inputs, importance, n_pix, weights, return_vals=1):
             numpy.transpose(numpy.tile(inputs, (n_pix, 1))) - weights) ** 2, axis=0)
 
     return numpy.argmin(activations) if return_vals == 1 else numpy.argsort(activations)[0:return_vals], activations
+
+
+def count_modified_cells(bmu, map_d, sigma):
+    """
+    Neighborhood function which quantifies how much cells around the best matching one are modified
+
+    :param int bmu: best matching unit
+    :param float map_d: array of distances computed with :func:`geometry`
+    """
+    return numpy.exp(-(map_d[bmu] ** 2) / sigma ** 2)
 
 
 def get_index(ix, iy, nx, ny):
@@ -108,16 +118,6 @@ def get_sigma(sigma_f, sigma_0, curr_t, total_t):
     Get value of sigma at a given time
     """
     return sigma_0 * numpy.power(sigma_f / sigma_0, float(curr_t) / float(total_t))
-
-
-def count_modified_cells(bmu, map_d, sigma):
-    """
-    Neighborhood function which quantifies how much cells around the best matching one are modified
-
-    :param int bmu: best matching unit
-    :param float map_d: array of distances computed with :func:`geometry`
-    """
-    return numpy.exp(-(map_d[bmu] ** 2) / sigma ** 2)
 
 
 def get_map_size(n_top, topology: Topology):
