@@ -41,11 +41,12 @@ class SOMap(object):
     :param str importance: Path to the file with importance ranking for attributes, default is none
     """
 
-    def __init__(self, topology='grid', som_type='online', n_top=28, n_iter=30, alpha_start=0.8,
-                 alpha_end=0.5, periodic=False, dict_dim=None):
+    def __init__(self, X, Y, topology='grid', som_type='online', n_top=28, n_iter=30, alpha_start=0.8,
+                 alpha_end=0.5, periodic=False, dict_dim=None, importance=None):
         if topology == 'sphere' and not is_power_2(n_top):
-            raise Exception("Error, n_top must be power of 2")
+            raise Exception("n_top must be power of 2")
 
+        self.X, self.Y = X, Y
         self.topology: Topology = Topology(topology)
         self.som_type: SomType = SomType(som_type)
         self.n_top = n_top
@@ -55,87 +56,64 @@ class SOMap(object):
         self.periodic = periodic
         self.dict_dim = dict_dim
         self.dist_lib, self.n_pix = compute_distance(self.topology, self.n_top, periodic=self.periodic)
+        self.n_row, self.n_col = numpy.shape(X)
+        self.weights = (numpy.random.rand(self.n_col, self.n_pix)) + self.X[0][0]
+        importance = numpy.ones(self.n_col) if importance is None else importance
+        self.importance = importance / numpy.sum(importance)
 
-    def create_map(self, X, Y, importance=None, inputs_weights=None, random_order=True, eval_map=False):
+    def __update_weights(self, input_weights):
+        self.weights = input_weights if input_weights is not None else self.weights
+
+    @timeit
+    def __create_map_online(self, random_order=True, eval_map=False):
+        t, total_t = 0, self.n_iter * self.n_row
+        sigma_0 = self.dist_lib.max()
+        sigma_f = numpy.min(self.dist_lib[numpy.where(self.dist_lib > 0.)])
+
+        for it in range(self.n_iter):
+            alpha = get_alpha(self.alpha_end, self.alpha_start, t, total_t)
+            sigma = get_sigma(sigma_f, sigma_0, t, total_t)
+            random_indices = random.sample(range(self.n_row), self.n_row) if random_order else numpy.arange(
+                self.n_row)
+            self.weights = core.create_map_online(self.X, self.dist_lib, self.weights, random_indices, self.importance,
+                                                  alpha, sigma, self.n_row, self.n_col, self.n_pix, 1)
+            t += self.n_row
+
+            if eval_map:
+                self.evaluate_map()
+                self.save_map(itn=it)
+
+    @timeit
+    def __create_map_batch(self, eval_map=False):
+        t, total_t = 0, self.n_iter * self.n_row
+        sigma_0 = self.dist_lib.max()
+        sigma_f = numpy.min(self.dist_lib[numpy.where(self.dist_lib > 0.)])
+
+        for it in range(self.n_iter):
+            sigma = get_sigma(sigma_f, sigma_0, t, total_t)
+            accum_w = numpy.zeros((self.n_col, self.n_pix))
+            accum_n = numpy.zeros(self.n_pix)
+            self.weights = core.create_map_batch(self.X, self.dist_lib, self.weights, self.importance, accum_w,
+                                                 accum_n, sigma, self.n_row, self.n_col, self.n_pix, 1)
+            t += self.n_row
+
+            if eval_map:
+                self.evaluate_map()
+                self.save_map(itn=it)
+
+    def create_map(self, input_weights=None, random_order=True, eval_map=False):
         """
         This functions actually create the maps, it uses
         random values to initialize the weights
         """
-        n_row, n_col = numpy.shape(X)
-        importance = numpy.ones(n_col) if importance is None else importance
-        self.X, self.Y = X, Y
-        self.importance = importance / numpy.sum(importance)
-        self.weights = inputs_weights if inputs_weights is not None else (numpy.random.rand(n_col, self.n_pix)) + \
-                                                                         self.X[0][0]
+        self.__update_weights(input_weights)
 
         if self.som_type == SomType.ONLINE:
-            self.__create_map_online(n_row=n_row, n_col=n_col, random_order=random_order, eval_map=eval_map)
+            self.__create_map_online(random_order=random_order, eval_map=eval_map)
         elif self.som_type == SomType.BATCH:
-            self.__create_map_batch(n_row=n_row, n_col=n_col, eval_map=eval_map)
+            self.__create_map_batch(eval_map=eval_map)
         else:
             raise Exception(f"Unknown type: {self.som_type}")
-
-    def __create_map_online(self, n_row, n_col, random_order=True, eval_map=False):
-
-        core.create_map_online(self.X, self.n_iter, n_row, n_col, self.n_pix, self.alpha_start, self.alpha_end,
-                               self.importance, self.dist_lib, self.weights, random_order)
-        # t, total_t = 0, self.n_iter * n_row
-        # sigma_0 = self.dist_lib.max()
-        # sigma_f = numpy.min(self.dist_lib[numpy.where(self.dist_lib > 0.)])
-        #
-        # for it in range(self.n_iter):
-        #     alpha = get_alpha(self.alpha_end, self.alpha_start, t, total_t)
-        #     sigma = get_sigma(sigma_f, sigma_0, t, total_t)
-        #     random_indices = random.sample(range(n_row), n_row) if random_order else numpy.arange(
-        #         n_row)
-        #     # core.create_map_online(X=self.X, n_row=n_row, alpha=alpha, sigma=sigma,
-        #     #                        random_indices=random_indices, importance=self.importance,
-        #     #                        weights=self.weights, n_pix=self.n_pix, dist_lib=self.dist_lib)
-        #
-        #     for i in range(n_row):
-        #         inputs = self.X[random_indices[i]]
-        #         best, activation = get_best_cell(inputs=inputs, importance=self.importance,
-        #                                               weights=self.weights, n_pix=self.n_pix, return_vals=1)
-                # self.weights += alpha * count_modified_cells(1, self.dist_lib, sigma) * numpy.transpose(
-                #     (inputs - numpy.transpose(self.weights)))
-                # continue
-
-            # t += n_row
-
-            # if eval_map:
-            #     self.evaluate_map()
-            #     self.save_map(itn=it)
-
-    @timeit
-    def __create_map_batch(self, n_row, n_col, eval_map=False):
-        return
-        # t, total_t = 0, self.n_iter * n_row
-        # sigma_0 = self.dist_lib.max()
-        # sigma_f = numpy.min(self.dist_lib[numpy.where(self.dist_lib > 0.)])
-        #
-        # for it in range(self.n_iter):
-        #     sigma = get_sigma(sigma_f, sigma_0, t, total_t)
-        #     accum_w = numpy.zeros((n_col, self.n_pix))
-        #     accum_n = numpy.zeros(self.n_pix)
-        #     core.create_map_batch(X=self.X, n_row=n_row, n_col=n_col, accum_n=accum_n, accum_w=accum_w, sigma=sigma,
-        #                           importance=self.importance, weights=self.weights, n_pix=self.n_pix,
-        #                           dist_lib=self.dist_lib)
-        #     for i in range(n_row):
-        #         inputs = self.X[i]
-        #         best, activation = get_best_cell(inputs=inputs, importance=self.importance,
-        #                                          weights=self.weights, n_pix=self.n_pix)
-        #         for kk in range(n_col):
-        #             accum_w[kk, :] += count_modified_cells(best, self.dist_lib, sigma) * inputs[kk]
-        #         accum_n += count_modified_cells(best, self.dist_lib, sigma)
-        #
-        #     for kk in range(n_col):
-        #         self.weights[kk] = accum_w[kk] / accum_n
-        #
-        #     t += n_row
-        #
-        #     if eval_map:
-        #         self.evaluate_map()
-        #         self.save_map(itn=it)
 
     def evaluate_map(self, input_x=None, input_y=None):
         """
@@ -147,14 +125,13 @@ class SOMap(object):
         :param float input_y: One  dimensional array of the values to be assigned to each cell in the map
             based on the in-memory X passed
         """
-        self.y_vals = {}
-        self.i_vals = {}
+        self.y_vals, self.i_vals = {}, {}
         in_x = self.X if input_x is None else input_x
         in_y = self.Y if input_y is None else input_y
         for i in range(len(in_x)):
             inputs = in_x[i]
-            best, activation = core.get_best_cell(inputs=inputs, importance=self.importance, weights=self.weights,
-                                                  n_pix=self.n_pix)
+            best, activation = core.get_best_cell(inputs, self.importance, self.weights, len(inputs), self.n_pix, 1)
+            best = best[0]
             if best not in self.y_vals:
                 self.y_vals[best] = []
             self.y_vals[best].append(in_y[i])
@@ -173,8 +150,7 @@ class SOMap(object):
         :param bool best: Set to True to get only the best cell; otherwise the 10 closest cells will be returned
         :return: array with the cell content
         """
-        bests, _ = core.get_best_cell(inputs=line, importance=self.importance, weights=self.weights, n_pix=self.n_pix,
-                                      return_vals=10)
+        bests, _ = core.get_best_cell(line, self.importance, self.weights, len(line), self.n_pix, 10)
         if best:
             return bests[0]
         for ib in range(10):

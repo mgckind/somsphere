@@ -15,7 +15,7 @@ def timeit(my_func):
         output = my_func(*args, **kw)
         tend = time.time()
 
-        print('"{}" took {:.3f} s to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
+        print('"{}" took {:.3f} ms to execute\n'.format(my_func.__name__, (tend - tstart) * 1000))
         return output
 
     return timed
@@ -37,7 +37,7 @@ def count_modified_cells(bmu, map_d, sigma):
     Neighborhood function which quantifies how much cells around the best matching one are modified
 
     :param int bmu: best matching unit
-    :param float map_d: array of distances computed with :func:`geometry`
+    :param ndarray map_d: array of distances computed with :func:`geometry`
     """
     return numpy.exp(-(map_d[bmu] ** 2) / sigma ** 2)
 
@@ -139,7 +139,7 @@ def compute_distance(topology: Topology, n_top, periodic=False):
     :param int n_top: Size of map,  for grid Size=n_top*n_top,
         for hex Size=n_top*(n_top+1[2]) if Ntop is even[odd] and for sphere
         Size=12*n_top*n_top and top must be power of 2
-    :param str periodic: Use periodic boundary conditions ('yes'/'no'), valid for 'hex' and 'grid' only
+    :param bool periodic: Use periodic boundary conditions ('yes'/'no'), valid for 'hex' and 'grid' only
     :return: 2D array with distances pre computed between cells and total number of units
     :rtype: 2D float array, int
     """
