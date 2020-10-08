@@ -130,7 +130,7 @@ class SOMap(object):
         in_y = self.Y if input_y is None else input_y
         for i in range(len(in_x)):
             inputs = in_x[i]
-            best, activation = core.get_best_cell(inputs, self.importance, self.weights, len(inputs), self.n_pix, 1)
+            best, _ = core.get_best_cell(inputs, self.importance, self.weights, len(inputs), self.n_pix, 1)
             best = best[0]
             if best not in self.y_vals:
                 self.y_vals[best] = []
